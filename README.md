@@ -1,323 +1,371 @@
-# 🚆 RailSentinel
+````markdown
+# RailSentinel
 
 ## AI-Powered Railway Security & Threat Response
 
-> An offline-first railway security platform for AI-assisted threat screening, contextual risk scoring, mobile patrol monitoring, secure event logging, and real-time incident response.
-
----
-
-## 📌 Overview
-
-**RailSentinel** is a modular railway security platform designed to assist Railway Protection Force (RPF) personnel in identifying, prioritizing, recording, and responding to suspicious security observations.
+RailSentinel is an offline-first railway security platform designed to assist Railway Protection Force (RPF) personnel with field-level threat screening, contextual risk assessment, mobile patrol monitoring, secure incident logging, and centralized security visualization.
 
 The platform combines:
 
-- 🖐️ Handheld field security interface
-- 🤖 Mobile patrol platform
-- 🧠 AI-assisted threat analysis
-- 🎯 Contextual threat scoring
-- 📡 Offline-first event handling
-- 🔄 Automatic synchronization
-- 🔐 Tamper-evident audit logging
-- 🖥️ Real-time security dashboard
+- AI-assisted threat screening
+- Handheld field-security interface
+- Mobile patrol platform simulation
+- Offline event storage and synchronization
+- Contextual threat scoring
+- Secure event and audit logging
+- Centralized real-time security dashboard
 
-RailSentinel is designed as a **decision-support system** for authorized security personnel and does not replace human verification or intervention.
-
----
-
-# 🎯 Problem
-
-Railway security personnel operate across large and dynamic environments such as:
-
-- Railway stations
-- Platforms
-- Waiting areas
-- Railway yards
-- Restricted zones
-- Underframe inspection areas
-- Hard-to-reach locations
-
-Security teams may face:
-
-- Large surveillance areas
-- High volumes of visual information
-- Intermittent network connectivity
-- Difficulty prioritizing suspicious observations
-- Fragmented field-to-command communication
-- Need for traceable security event records
-
-RailSentinel addresses this gap by providing a **field-to-command security response layer** that can operate locally and synchronize securely when connectivity is restored.
+> **Prototype status:** RailSentinel is an SIH 2026 software prototype. Current AI inference and patrol behavior are simulated/deterministic for demonstrating the complete security workflow. The architecture is designed so trained computer-vision models and physical hardware can be integrated without redesigning the backend, synchronization, or dashboard layers.
 
 ---
 
-# 💡 Proposed Solution
+## 1. Problem
 
-RailSentinel follows this workflow:
+Railway security personnel operate across stations, platforms, yards, tunnels, underframe areas, and other locations where continuous centralized connectivity and fixed surveillance coverage may not always be sufficient.
+
+RailSentinel addresses the field-response gap by providing:
+
+- Rapid identification of suspicious situations
+- Context-aware threat prioritization
+- Local operation during network outages
+- Mobile inspection capability
+- Reliable incident recording
+- Synchronization after connectivity is restored
+- A common operational view for security teams
+
+RailSentinel is designed as a **field-response and threat-coordination layer** that complements existing railway surveillance infrastructure.
+
+---
+
+## 2. Proposed Solution
 
 ```text
-Field Device
-     ↓
-AI-Assisted Analysis
-     ↓
-Behavior + Dwell + Context
-     ↓
-Threat Context Engine
-     ↓
-Risk Score (0–100)
-     ↓
-Local Event Storage
-     ↓
-Offline Queue / Synchronization
-     ↓
-Central Backend
-     ↓
-Secure Audit Chain
-     ↓
-Command Dashboard
-```
+                ┌──────────────────────────┐
+                │   Central Dashboard      │
+                │ React + TypeScript       │
+                └────────────┬─────────────┘
+                             │
+                       REST / WebSocket
+                             │
+                ┌────────────▼─────────────┐
+                │     FastAPI Backend      │
+                │ Auth / Events / Audit    │
+                └────────────┬─────────────┘
+                             │
+                       PostgreSQL
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+          ▼                  ▼                  ▼
+      AI Engine         Edge Agent        Patrol Platform
+   Threat Analysis    Offline Queue       Patrol Simulation
+````
+
+The system follows a **human-in-the-loop** security workflow.
+
+AI produces evidence and a contextual risk score. Authorized personnel make the final verification and intervention decision.
 
 ---
 
-# 🧠 AI-Assisted Threat Screening
+## 3. Core Features
 
-RailSentinel does not rely only on object classification.
+### 3.1 AI-Assisted Threat Screening
 
-The Threat Context Engine combines multiple signals:
+The AI layer converts detection evidence into contextual threat analysis.
+
+The current prototype uses deterministic simulation to demonstrate the complete pipeline.
+
+Example evidence:
 
 ```text
-Object Detection
-       +
-Detection Confidence
-       +
-Person/Object Behaviour
-       +
-Object Dwell Duration
-       +
-Operational Context
-       ↓
-Contextual Threat Score
-       ↓
-GREEN / YELLOW / RED
+Object detected
+Person leaves object
+Object remains stationary
+Long dwell duration
+High detection confidence
 ```
+
+The Threat Context Engine converts these signals into a prototype threat score.
 
 ### Prototype Threat Bands
 
-| Score | Classification |
-|------:|----------------|
-| 0–30 | 🟢 GREEN |
-| 31–60 | 🟡 YELLOW |
-| 61–100 | 🔴 RED |
+|  Score | Level  |
+| -----: | ------ |
+|   0–30 | GREEN  |
+|  31–60 | YELLOW |
+| 61–100 | RED    |
 
-> These score bands are prototype values and are not scientifically or operationally validated railway thresholds.
-
----
-
-# ⚠️ Scientific Boundary
-
-RailSentinel does **not** claim that a conventional RGB or thermal camera can directly identify narcotics or explosives inside a closed bag.
-
-The current platform focuses on:
-
-**AI-assisted visual threat screening, suspicious-object detection, behavioral/contextual analysis, and incident prioritization.**
-
-Actual chemical or explosive detection would require dedicated sensing technologies, appropriate certification, and operational validation.
+These thresholds are **prototype decision bands**, not scientifically validated operational thresholds.
 
 ---
 
-# 📡 Offline-First Architecture
+### 3.2 Contextual Threat Scoring
 
-Railway field environments cannot always depend on continuous network connectivity.
+RailSentinel does not treat every unattended object as an equal threat.
 
-RailSentinel therefore allows security events to be created and stored locally before synchronization.
+The scoring layer considers contextual evidence such as:
+
+* Detection confidence
+* Object category
+* Person-object relationship
+* Person leaving an object
+* Dwell duration
+* Location/context
+* Multiple evidence signals
+
+Example:
 
 ```text
-Security Observation
-        ↓
-Threat Analysis
-        ↓
-SQLite Local Storage
-        ↓
-QUEUED
-        ↓
-Network Unavailable
-        ↓
-RETRY_WAIT
-        ↓
-Network Restored
-        ↓
-SYNCING
-        ↓
-Central Backend
-        ↓
-SYNCED
+Detection confidence: 90%
+Person left object: YES
+Object dwell time: 95 seconds
+
+Threat score: 70
+Severity: RED
 ```
 
-### Key Features
-
-- Local event creation
-- SQLite-based event outbox
-- Stable event IDs
-- Retry mechanism
-- Automatic synchronization
-- Events retained during connectivity loss
-- Backend-authoritative audit metadata
+The dashboard receives both the score and an explanation of why the event was prioritized.
 
 ---
 
-# 🔐 Secure Event Logging
+## 4. Scientific Boundary
 
-RailSentinel maintains a **tamper-evident event history** using a cryptographic hash chain.
+RailSentinel does **not** claim that an RGB or thermal camera can directly determine that a closed bag contains explosives or narcotics.
+
+The current system performs:
 
 ```text
-Event N-1
-    │
-    │ Previous Event Hash
-    ▼
-Event N
-    │
-    ├── Canonical Event Data
-    ├── Previous Event Hash
-    └── Current Event Hash
+Visual / contextual evidence
+          ↓
+AI-assisted analysis
+          ↓
+Threat context scoring
+          ↓
+Human verification
 ```
 
-The audit system maintains:
+The system is intended to **assist security personnel**, not replace authorized inspection procedures.
 
-- Event hash
-- Previous event hash
-- Chain sequence
-- Audit head
-- Canonical event information
-
-This allows unexpected modification of recorded event history to be detected.
-
-> SHA-256 is used as a hashing mechanism, not as encryption.
+Future trained models may improve object detection, tracking, anomaly detection, and scene understanding.
 
 ---
 
-# 🤖 Mobile Patrol Platform
+## 5. Offline-First Architecture
 
-RailSentinel includes a software architecture for a mobile patrol platform.
+Railway field environments can experience unreliable connectivity.
 
-The current prototype uses a **software patrol simulation / wheeled-platform representation**.
-
-Potential operational environments include:
-
-- Railway yards
-- Restricted areas
-- Underframe inspection zones
-- Hard-to-reach locations
-- Controlled patrol environments
-
-The patrol layer can generate security observations containing:
-
-- Device identity
-- GPS position
-- Threat score
-- Severity
-- Object information
-- Behavioral evidence
-- Timestamp
-
----
-
-# 🖥️ Command Dashboard
-
-The RailSentinel dashboard provides a centralized security command interface.
-
-### Current dashboard capabilities
-
-- System status
-- Red-event count
-- New-alert count
-- Active devices
-- Total events
-- Security map
-- Patrol location
-- Threat location
-- Live threat feed
-- Incident details
-- Threat score
-- Severity
-- WebSocket live updates
-
-### Dashboard
-
-_Add dashboard screenshot here._
+RailSentinel therefore supports local operation through an edge event queue.
 
 ```text
-docs/images/dashboard.png
+          NO NETWORK
+              │
+              ▼
+     ┌─────────────────┐
+     │ Local AI/Event  │
+     │ Processing      │
+     └────────┬────────┘
+              │
+              ▼
+     ┌─────────────────┐
+     │ SQLite Outbox   │
+     │ QUEUED          │
+     └────────┬────────┘
+              │
+         Network returns
+              │
+              ▼
+     ┌─────────────────┐
+     │ Retry / Sync    │
+     └────────┬────────┘
+              │
+              ▼
+     ┌─────────────────┐
+     │ FastAPI Server  │
+     └─────────────────┘
 ```
+
+Events remain locally stored when the network is unavailable.
+
+When connectivity returns, the synchronization worker retries delivery.
+
+The same event ID is preserved across retries to support idempotent synchronization.
+
+### Current Prototype Capabilities
+
+* Local event creation
+* SQLite event/outbox storage
+* Offline queue
+* Retry handling
+* Exponential backoff
+* Synchronization after recovery
+* Backend-side authoritative event-chain metadata
 
 ---
 
-# 🏗️ System Architecture
+## 6. Mobile Patrol Platform
+
+RailSentinel includes a software representation of a mobile patrol unit.
+
+The architecture is designed for future field platforms such as:
+
+* Wheeled patrol robot
+* Quadruped platform
+* Underframe inspection platform
+* Yard patrol system
+
+The current prototype uses a deterministic patrol simulation.
+
+Example patrol flow:
 
 ```text
-                         RAILWAY FIELD
-                              │
-               ┌──────────────┴──────────────┐
-               │                             │
-        Handheld Device                Patrol Platform
-               │                             │
-               └──────────────┬──────────────┘
-                              ▼
-                     Edge AI / Analysis
-                              │
-                              ▼
-                    Threat Context Engine
-                              │
-                              ▼
-                       SQLite Outbox
-                              │
-                     ┌────────┴────────┐
-                     │                 │
-                  Offline            Online
-                     │                 │
-                     │          Automatic Sync
-                     │                 │
-                     └────────┬────────┘
-                              ▼
-                       FastAPI Backend
-                              │
-                       PostgreSQL DB
-                              │
-                 ┌────────────┴────────────┐
-                 │                         │
-          Secure Audit Chain          WebSocket
-                 │                         │
-                 └────────────┬────────────┘
-                              ▼
-                      React Dashboard
+Patrol starts
+     ↓
+Routine observation
+     ↓
+Suspicious object detected
+     ↓
+Threat score generated
+     ↓
+RED alert created
+     ↓
+Event queued/synchronized
+     ↓
+Dashboard updated
 ```
 
----
-
-# 🧩 Technology Stack
-
-| Layer | Technology |
-|---|---|
-| AI / Inference | Python |
-| AI Prototype | Deterministic inference simulator |
-| Future Vision | YOLO-family detector + tracking |
-| Edge Storage | SQLite |
-| Backend | FastAPI |
-| Database | PostgreSQL 16 |
-| ORM | SQLAlchemy |
-| Migrations | Alembic |
-| Authentication | JWT |
-| Live Updates | WebSocket |
-| Frontend | React + TypeScript |
-| Build Tool | Vite |
-| Containers | Docker Compose |
-| Testing | Pytest |
-| Version Control | Git |
+The patrol simulator generates location-aware security events without requiring physical robot hardware.
 
 ---
 
-# 📁 Project Structure
+## 7. Security & Auditability
+
+RailSentinel includes security mechanisms intended for a prototype security-event pipeline.
+
+### Authentication
+
+* JWT-based authentication
+* Role-based access concepts
+* Device identity
+* Authorized API access
+
+### Event Integrity
+
+Events are linked using a cryptographic hash chain.
+
+```text
+Event 1
+   │
+   ├── hash
+   ▼
+Event 2
+   │
+   ├── hash + previous hash
+   ▼
+Event 3
+   │
+   ├── hash + previous hash
+   ▼
+Event 4
+```
+
+This allows the system to detect modification or removal of events within the maintained chain.
+
+> SHA-256 is used as a hashing mechanism, not as encryption. The hash chain provides tamper-evidence; it does not by itself make a system immutable.
+
+---
+
+## 8. Central Dashboard
+
+The React dashboard provides an operational security view.
+
+The current interface includes:
+
+* RailSentinel command-center branding
+* System status
+* Red-event counter
+* New-alert counter
+* Active-device counter
+* Total-event counter
+* Security map
+* Patrol location
+* Threat location
+* Live threat feed
+* Selected incident details
+* Threat score
+* Severity
+* Event explanation
+* Device information
+
+The dashboard communicates with the FastAPI backend through REST APIs and WebSocket events.
+
+---
+
+## 9. Technology Stack
+
+### Frontend
+
+* React
+* TypeScript
+* Vite
+* CSS
+
+### Backend
+
+* Python
+* FastAPI
+* Pydantic
+* JWT authentication
+* WebSockets
+
+### Database
+
+* PostgreSQL
+* SQLite for edge/offline outbox
+
+### AI
+
+* Python
+* Pydantic
+* Rule-based contextual scoring
+* Deterministic inference simulator
+* YOLO-family integration planned
+
+### Edge
+
+* Python
+* SQLite
+* Offline event queue
+* Retry/synchronization worker
+
+### Hardware Simulation
+
+* Python
+* Patrol route simulation
+* GPS event simulation
+
+### Infrastructure
+
+* Docker
+* Docker Compose
+* Git
+* GitHub
+
+---
+
+## 10. Project Structure
 
 ```text
 RailSentinel/
+│
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── backend/
+│   ├── app/
+│   ├── tests/
+│   └── requirements.txt
 │
 ├── ai/
 │   └── inference/
@@ -328,17 +376,6 @@ RailSentinel/
 │       ├── demo.py
 │       └── tests/
 │
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── models/
-│   │   └── services/
-│   ├── alembic/
-│   ├── Dockerfile
-│   └── requirements.txt
-│
 ├── edge/
 │   ├── app/
 │   │   ├── db.py
@@ -347,59 +384,73 @@ RailSentinel/
 │   ├── demo_offline.py
 │   └── tests/
 │
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── App.css
-│   │   └── main.tsx
-│   └── package.json
-│
 ├── hardware/
 │   ├── patrol_sim.py
 │   ├── demo_hybrid.py
-│   └── tests/
+│   ├── tests/
+│   └── README.md
 │
-├── gateway/
-├── database/
+├── comms/
+│   └── Communication layer / planned device interfaces
+│
 ├── docs/
-├── scripts/
-├── tests/
+│   └── Project documentation
 │
 ├── docker-compose.yml
 ├── .env.example
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-# ⚙️ Quick Start
+## 11. Requirements
 
-## Requirements
+Recommended environment:
 
-- Docker Desktop
-- Python 3.12+
-- Node.js 20+
+* Windows / Linux / macOS
+* Git
+* Python 3.12+
+* Node.js 20+
+* npm
+* Docker Desktop
 
-Check your installation:
+Check installations:
 
 ```powershell
-docker --version
+git --version
 python --version
 node --version
 npm --version
+docker --version
 ```
 
 ---
 
-## 1. Start the Backend
-
-From the repository root:
+## 12. Clone the Repository
 
 ```powershell
-docker compose up --build
+git clone https://github.com/sakthi03082006/RailSentinel.git
+cd RailSentinel
 ```
 
-Backend:
+---
+
+## 13. Start Backend and PostgreSQL
+
+From the project root:
+
+```powershell
+docker compose up -d
+```
+
+Check containers:
+
+```powershell
+docker compose ps
+```
+
+The FastAPI backend should be available at:
 
 ```text
 http://localhost:8000
@@ -413,310 +464,437 @@ http://localhost:8000/docs
 
 ---
 
-## 2. Start the Frontend
+## 14. Start the Frontend
 
-Open another terminal:
+Open another PowerShell window:
 
 ```powershell
-cd frontend
+cd RailSentinel\frontend
 npm install
 npm run dev
 ```
 
-Open the Vite URL displayed in the terminal.
+Then open the Vite URL shown in the terminal.
 
----
+Typically:
 
-# 🧪 Testing
-
-Run the current automated tests:
-
-```powershell
-pytest hardware/tests/ edge/tests/ ai/inference/tests/
+```text
+http://localhost:5173
 ```
 
-The test suite covers:
-
-- Threat scoring
-- AI inference structures
-- AI/backend integration
-- Offline queue behavior
-- Synchronization
-- Patrol event generation
-
 ---
 
-# 🧠 AI Demo
+## 15. Run the AI Demo
 
-Run:
+From the project root:
 
 ```powershell
 python ai/inference/demo.py
 ```
 
-The current implementation uses a deterministic inference simulator to validate the complete security-event pipeline.
+The demo creates a deterministic high-risk security event and sends it to the backend.
 
-The inference interface is intentionally decoupled from the rest of the system.
+Example:
 
-This allows a future trained YOLO-family model to replace the simulator without redesigning:
+```text
+Severity: RED
+Threat Score: 70
+```
 
-- Event schemas
-- Offline synchronization
-- Backend APIs
-- Audit logging
-- Dashboard integration
+The resulting event can then appear in the dashboard.
 
 ---
 
-# 📡 Offline Demo
+## 16. Run the Offline Demo
 
-Run:
+From the project root:
 
 ```powershell
 python edge/demo_offline.py
 ```
 
-The demonstration simulates:
+The demo demonstrates:
 
 ```text
-Backend Unavailable
-        ↓
-Event Created Locally
-        ↓
-SQLite Queue
-        ↓
+Online
+   ↓
+Event created
+   ↓
+Network unavailable
+   ↓
+Event stored locally
+   ↓
 RETRY_WAIT
-        ↓
-Backend Restored
-        ↓
+   ↓
+Network restored
+   ↓
 Synchronization
-        ↓
+   ↓
 SYNCED
 ```
 
+The original event ID is preserved across retries.
+
 ---
 
-# 🤖 Patrol Demo
+## 17. Run the Patrol Demo
 
-Run:
+From the project root:
 
 ```powershell
 python hardware/demo_hybrid.py
 ```
 
-Demonstration flow:
+The patrol simulation demonstrates:
+
+* Patrol movement
+* Simulated GPS coordinates
+* Routine observations
+* Suspicious-object observation
+* Threat scoring
+* Offline queueing
+* Event synchronization
+
+Example:
 
 ```text
-Patrol Simulation
-        ↓
-Edge Storage
-        ↓
-Offline Queue
-        ↓
-Backend Synchronization
-        ↓
-Audit Chain
-        ↓
-Dashboard
+Routine event
+     ↓
+Suspicious event
+     ↓
+RED threat
+     ↓
+Offline queue
+     ↓
+Network recovery
+     ↓
+Backend synchronization
 ```
 
 ---
 
-# 🎬 Complete Demonstration Scenario
+## 18. Run Tests
 
-A complete RailSentinel demonstration can be performed as follows:
+Run the major prototype test suites:
 
-### 1. Patrol Begins
+```powershell
+pytest hardware/tests/ edge/tests/ ai/inference/tests/
+```
 
-A patrol device starts operating in a simulated railway security zone.
+The tests cover areas including:
 
-### 2. Routine Observation
-
-The device records a normal observation.
-
-### 3. Suspicious Object
-
-A baggage/object observation is generated with contextual indicators.
-
-### 4. Behavioral Evidence
-
-A person is simulated as leaving the object unattended.
-
-### 5. Dwell Threshold
-
-The object remains stationary beyond the configured prototype threshold.
-
-### 6. Threat Score
-
-The Threat Context Engine calculates a higher risk score.
-
-### 7. Network Failure
-
-The field device loses connectivity.
-
-### 8. Local Storage
-
-The event remains stored in the local SQLite outbox.
-
-### 9. Network Restoration
-
-Connectivity is restored.
-
-### 10. Synchronization
-
-The queued event is synchronized with the central backend.
-
-### 11. Secure Audit
-
-The backend adds the event to the tamper-evident hash chain.
-
-### 12. Command Dashboard
-
-The incident becomes visible in the live threat feed and map.
+* Threat scoring
+* AI integration
+* Event creation
+* Offline queue behavior
+* Synchronization
+* Patrol simulation
 
 ---
 
-# 🚧 Current Prototype Status
+## 19. Demonstration Scenario
 
-| Capability | Status |
-|---|:---:|
-| FastAPI Backend | ✅ |
-| PostgreSQL Database | ✅ |
-| JWT Authentication | ✅ |
-| Event Ingestion | ✅ |
-| Secure Audit Hash Chain | ✅ |
-| Offline SQLite Queue | ✅ |
-| Automatic Retry / Sync | ✅ |
-| Threat Scoring Engine | ✅ |
-| AI Inference Simulator | ✅ |
-| Patrol Simulation | ✅ |
-| React Dashboard | ✅ |
-| WebSocket Live Events | ✅ |
-| YOLO-Trained Model | 🔄 Future |
-| Real Camera Inference | 🔄 Future |
-| Physical Patrol Platform | 🔄 Future |
-| ESP-NOW Hardware | 🔄 Future |
-| LoRa Hardware | 🔄 Future |
-| Railway Field Validation | 🔄 Future |
+The recommended SIH demonstration flow is:
 
----
+### Step 1 — Normal Patrol
 
-# 🗺️ Roadmap
+A patrol unit reports a routine observation.
 
-## Phase 1 — Software Prototype
+```text
+Threat Score: 0
+Severity: GREEN
+```
 
-- [x] FastAPI backend
-- [x] PostgreSQL database
-- [x] JWT authentication
-- [x] Event ingestion
-- [x] Threat scoring
-- [x] Offline event queue
-- [x] Automatic synchronization
-- [x] Secure audit chain
-- [x] Patrol simulation
-- [x] React command dashboard
-- [x] WebSocket live events
-- [x] Automated tests
+### Step 2 — Suspicious Object
 
-## Phase 2 — Edge AI
+The AI pipeline receives evidence that:
 
-- [ ] Railway-specific dataset
-- [ ] YOLO-family object detector
-- [ ] Object tracking
-- [ ] Real dwell-time measurement
-- [ ] Behavioral analysis
-- [ ] Edge inference optimization
-- [ ] Model performance evaluation
+```text
+Object detected
+Person leaves object
+Long dwell time
+High detection confidence
+```
 
-## Phase 3 — Physical Prototype
+### Step 3 — Threat Analysis
 
-- [ ] RGB camera integration
-- [ ] Optional thermal camera
-- [ ] ESP32 controller
-- [ ] ESP-NOW communication
-- [ ] LoRa telemetry
-- [ ] GPS module
-- [ ] Battery management
-- [ ] Rugged enclosure
+The Threat Context Engine generates:
 
-## Phase 4 — Validation
+```text
+Threat Score: 70
+Severity: RED
+```
 
-- [ ] Controlled railway-environment testing
-- [ ] False-positive analysis
-- [ ] Threat-score calibration
-- [ ] Hardware reliability testing
-- [ ] Cybersecurity testing
-- [ ] Privacy validation
-- [ ] Relevant railway/regulatory approvals
+### Step 4 — Offline Condition
+
+Network connectivity is intentionally unavailable.
+
+The edge system stores the event locally:
+
+```text
+QUEUED
+```
+
+### Step 5 — Connectivity Restored
+
+The synchronization worker retries the event:
+
+```text
+SYNCING
+   ↓
+SYNCED
+```
+
+### Step 6 — Command Dashboard
+
+The central dashboard displays:
+
+```text
+RED ALERT
+Threat Score: 70
+Location
+Device
+Event explanation
+Timestamp
+```
+
+This demonstrates the complete field-to-command-center workflow.
 
 ---
 
-# 🔒 Security & Responsible AI
+## 20. Communication Layer
 
-RailSentinel is designed as a human-in-the-loop security decision-support system.
+The architecture is designed to support local device communication in future hardware deployments.
 
-Production deployment would require additional controls such as:
+Planned communication technologies include:
 
-- Secure device provisioning
-- Key management
-- Certificate management
-- Mutual TLS
-- Secure boot
-- Firmware signing
-- Privacy controls
-- Data retention policies
-- Security testing
-- Railway-specific cybersecurity validation
-- Appropriate operational authorization
+* ESP-NOW
+* LoRa
+* BLE
+* Local gateway communication
 
-AI-generated alerts should support, not replace, authorized security personnel.
+Communication should be selected according to deployment requirements, range, bandwidth, radio compliance, power consumption, and railway operating constraints.
+
+LoRa is intended for low-bandwidth telemetry and alert messages rather than video transmission.
+
+The current software prototype does not claim completed physical ESP-NOW or LoRa deployment.
 
 ---
 
-# ⚠️ Limitations
+## 21. Hardware Roadmap
 
-The current repository is a **software prototype**.
+### Handheld Unit
 
-It does not currently claim:
+```text
+Camera / Sensors
+       ↓
+Edge processor
+       ↓
+AI inference
+       ↓
+Threat scoring
+       ↓
+Local alert
+       ↓
+Secure event transmission
+```
 
-- Production-trained AI accuracy
-- Direct chemical or explosive detection
-- Railway certification
-- RDSO certification
-- Production deployment
-- Physical ESP-NOW/LoRa deployment
-- Validated operational threat thresholds
-- Field-tested railway performance
+### Patrol Platform
 
-The prototype focuses on demonstrating the complete software architecture and workflow.
+```text
+Camera / Sensors
+       ↓
+Edge compute
+       ↓
+Object detection
+       ↓
+Tracking / context
+       ↓
+Threat scoring
+       ↓
+Local storage
+       ↓
+Wireless synchronization
+```
 
----
-
-# 🎯 Why RailSentinel?
-
-RailSentinel is built around a simple principle:
-
-> **Detect locally. Reason contextually. Operate offline. Synchronize securely. Respond centrally.**
-
-The architecture provides a foundation for transitioning from simulated inference and patrol behavior toward a real edge-AI railway security platform.
-
----
-
-# 👥 SIH 2026
-
-## RailSentinel
-
-### AI-Powered Railway Security & Threat Response
-
-Developed as a software-first prototype for **Smart India Hackathon 2026**.
-
-**Repository:**  
-https://github.com/sakthi03082006/RailSentinel
+The current SIH prototype focuses on validating the software architecture before integrating physical hardware.
 
 ---
 
-## 📜 Prototype Disclaimer
+## 22. AI Roadmap
 
-RailSentinel is an experimental prototype intended for demonstration and research.
+### Current
 
-Any real-world railway deployment would require appropriate engineering validation, cybersecurity assessment, privacy safeguards, regulatory compliance, railway authorization, hardware testing, and controlled field trials.
+```text
+Deterministic inference simulator
+        ↓
+Contextual threat scoring
+        ↓
+Backend event
+        ↓
+Dashboard
+```
+
+### Future
+
+```text
+Camera
+   ↓
+YOLO-family object detector
+   ↓
+Object tracking
+   ↓
+Behavior/context analysis
+   ↓
+Threat Context Engine
+   ↓
+Human verification
+```
+
+Potential future model classes include railway-relevant baggage and parcel categories such as:
+
+* Backpacks
+* Suitcases
+* Travel bags
+* Plastic bags
+* Jute/bori sacks
+* Steel trunks
+* Bundles/potlis
+* Cardboard parcels
+
+A trained model would require an appropriate railway-domain dataset, validation, evaluation metrics, and operational testing.
+
+---
+
+## 23. Privacy & Responsible AI
+
+RailSentinel follows a human-in-the-loop approach.
+
+The system should:
+
+* Minimize unnecessary personal data
+* Avoid treating AI output as proof of wrongdoing
+* Provide explainable event evidence
+* Allow authorized personnel to make the final decision
+* Apply appropriate access controls
+* Protect stored event data
+* Avoid unnecessary facial recognition or identity processing
+
+AI-generated threat scores are intended for **prioritization and assistance**, not automatic enforcement decisions.
+
+---
+
+## 24. Current Prototype Status
+
+| Component                   | Status             |
+| --------------------------- | ------------------ |
+| React dashboard             | Implemented        |
+| FastAPI backend             | Implemented        |
+| PostgreSQL integration      | Implemented        |
+| JWT authentication          | Implemented        |
+| WebSocket event updates     | Implemented        |
+| Threat scoring              | Implemented        |
+| AI inference simulator      | Implemented        |
+| AI → backend integration    | Implemented        |
+| Offline SQLite queue        | Implemented        |
+| Retry/synchronization       | Implemented        |
+| Patrol simulation           | Implemented        |
+| Audit/hash-chain logging    | Implemented        |
+| Physical handheld           | Planned            |
+| Physical patrol robot       | Planned            |
+| ESP-NOW physical networking | Planned            |
+| LoRa physical networking    | Planned            |
+| Trained YOLO model          | Future integration |
+| Railway field validation    | Future work        |
+
+---
+
+## 25. Important Prototype Limitations
+
+RailSentinel is a research/prototype system and should not be interpreted as a certified railway security product.
+
+The current prototype:
+
+* Uses simulated AI inference
+* Uses simulated patrol/GPS data
+* Does not directly chemically identify explosives or narcotics
+* Does not claim RDSO certification
+* Does not claim operational railway deployment approval
+* Does not replace authorized security inspection
+* Requires further testing before real-world deployment
+
+---
+
+## 26. Future Development
+
+Planned improvements include:
+
+1. Train and validate railway-domain object detection models
+2. Integrate real camera streams
+3. Add multi-object tracking
+4. Improve contextual behavior analysis
+5. Integrate physical edge hardware
+6. Implement ESP-NOW/LoRa device communication
+7. Add station-level local gateway
+8. Improve device authentication and key management
+9. Add richer evidence management
+10. Perform field testing and performance evaluation
+11. Conduct security testing
+12. Evaluate latency, false positives, false negatives, and reliability
+13. Integrate with authorized railway security workflows
+
+---
+
+## 27. Why RailSentinel?
+
+RailSentinel focuses on the gap between **detecting a possible threat and responding to it in the field**.
+
+The platform combines:
+
+```text
+AI-assisted screening
+        +
+Contextual risk scoring
+        +
+Offline-first edge operation
+        +
+Mobile patrol capability
+        +
+Secure event logging
+        +
+Central command dashboard
+```
+
+Instead of depending entirely on continuous connectivity or a single surveillance layer, RailSentinel is designed as a distributed security-response platform.
+
+---
+
+## 28. SIH 2026
+
+RailSentinel is being developed as a prototype for **Smart India Hackathon 2026**.
+
+The project demonstrates how AI, edge computing, secure event processing, offline synchronization, and mobile patrol systems can be combined into a railway-security response architecture.
+
+---
+
+## 29. Prototype Disclaimer
+
+This repository contains a research and demonstration prototype.
+
+AI-generated scores and alerts are not validated operational security decisions. Any real railway deployment would require appropriate testing, cybersecurity assessment, hardware validation, regulatory/organizational approvals, privacy safeguards, and integration with authorized railway security procedures.
+
+---
+
+## License
+
+This project is currently intended for academic, research, and SIH demonstration purposes.
+
+````
+
+After replacing the file, run:
+
+```powershell
+git add README.md
+git commit -m "Rewrite project README"
+git push origin main
+````
