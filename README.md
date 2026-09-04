@@ -1,4 +1,3 @@
-````markdown
 # RailSentinel
 
 ## AI-Powered Railway Security & Threat Response
