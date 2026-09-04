@@ -875,25 +875,3 @@ RailSentinel is being developed as a prototype for **Smart India Hackathon 2026*
 The project demonstrates how AI, edge computing, secure event processing, offline synchronization, and mobile patrol systems can be combined into a railway-security response architecture.
 
 ---
-
-## 29. Prototype Disclaimer
-
-This repository contains a research and demonstration prototype.
-
-AI-generated scores and alerts are not validated operational security decisions. Any real railway deployment would require appropriate testing, cybersecurity assessment, hardware validation, regulatory/organizational approvals, privacy safeguards, and integration with authorized railway security procedures.
-
----
-
-## License
-
-This project is currently intended for academic, research, and SIH demonstration purposes.
-
-````
-
-After replacing the file, run:
-
-```powershell
-git add README.md
-git commit -m "Rewrite project README"
-git push origin main
-````
