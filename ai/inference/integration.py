@@ -9,7 +9,12 @@ DEMO_DEVICE_ID = UUID("00000000-0000-4000-8000-000000000003")
 DEMO_STATION_ID = UUID("00000000-0000-4000-8000-000000000001")
 DEMO_ZONE_ID = UUID("00000000-0000-4000-8000-000000000002")
 
-def map_analysis_to_event_payload(analysis: ThreatAnalysis, device_id: UUID = DEMO_DEVICE_ID) -> dict:
+def map_analysis_to_event_payload(
+    analysis: ThreatAnalysis,
+    device_id: UUID = DEMO_DEVICE_ID,
+    lat: float | None = 28.6142,
+    lon: float | None = 77.2090,
+) -> dict:
     """
     Converts a ThreatAnalysis into a valid RailSentinel Security Event API payload.
     Preserves exactly the threat_score and evidence structure.
@@ -19,12 +24,14 @@ def map_analysis_to_event_payload(analysis: ThreatAnalysis, device_id: UUID = DE
     # Map AI objects and behaviors to the backend EventType
     if "person" in evidence.object_type.lower() and not evidence.person_left_object:
         event_type = "anomaly"
-    elif evidence.person_left_object or evidence.object_type.lower() in ("luggage", "backpack", "bag", "package"):
+    elif evidence.person_left_object or evidence.object_type.lower() in (
+        "luggage", "backpack", "bag", "package", "handbag", "suitcase"
+    ):
         event_type = "unattended_object"
     else:
         event_type = "detection"
         
-    return {
+    payload = {
         "id": str(uuid4()),
         "device_id": str(device_id),
         "station_id": str(DEMO_STATION_ID),
@@ -44,3 +51,8 @@ def map_analysis_to_event_payload(analysis: ThreatAnalysis, device_id: UUID = DE
             "explanation": analysis.explanation
         }
     }
+    if lat is not None:
+        payload["lat"] = lat
+    if lon is not None:
+        payload["lon"] = lon
+    return payload

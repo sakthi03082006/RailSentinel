@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
-from app.db.ids import ADMIN_USER_ID, DEMO_DEVICE_ID, DEMO_STATION_ID, DEMO_ZONE_ID
+from app.db.ids import ADMIN_USER_ID, DEMO_CCTV_DEVICE_ID, DEMO_DEVICE_ID, DEMO_STATION_ID, DEMO_ZONE_ID
 from app.models.audit import AuditChainHead
 from app.models.device import Device
 from app.models.enums import ROLE_NAMES, DeviceStatus, DeviceType, ZoneType
@@ -75,6 +75,18 @@ def seed_if_empty(db: Session) -> None:
                 device_type=DeviceType.SIMULATOR.value,
                 station_id=DEMO_STATION_ID,
                 label="Demo simulator",
+                status=DeviceStatus.ACTIVE.value,
+            )
+        )
+
+    if db.get(Device, DEMO_CCTV_DEVICE_ID) is None:
+        db.add(
+            Device(
+                id=DEMO_CCTV_DEVICE_ID,
+                device_uid="cctv-webcam-01",
+                device_type=DeviceType.CCTV_INGEST.value,
+                station_id=DEMO_STATION_ID,
+                label="Station Gate 1 - Laptop CCTV",
                 status=DeviceStatus.ACTIVE.value,
             )
         )

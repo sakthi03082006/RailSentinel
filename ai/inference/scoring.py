@@ -24,7 +24,7 @@ def calculate_threat(evidence: DetectionEvidence) -> ThreatAnalysis:
         )
 
     # Behavior heuristics
-    if evidence.object_type.lower() in ("luggage", "bag", "backpack", "package"):
+    if evidence.object_type.lower() in ("luggage", "bag", "backpack", "package", "handbag", "suitcase"):
         if evidence.person_left_object:
             score += 40.0
             reasons.append("Person observed leaving the object.")
