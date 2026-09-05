@@ -1,27 +1,10 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-
-type SecurityEvent = {
-  id: string;
-  event_type: string;
-  severity_band: string;
-  threat_score: number;
-  confidence?: number;
-  status: string;
-  lat?: number | string;
-  lon?: number | string;
-  created_at?: string;
-  occurred_at?: string;
-  device_id?: string;
-  payload?: {
-    object_type?: string;
-    explanation?: string;
-    route_information?: {
-      waypoint_name?: string;
-      simulated_data?: boolean;
-    };
-  };
-};
+import {
+  type SecurityEvent,
+  updateEventsWithIncoming,
+  consolidateHistoricalEvents,
+} from "./eventUtils";
 
 type WebSocketMessage = {
   type: string;
@@ -71,7 +54,8 @@ export default function App() {
         if (!eventsResponse.ok) throw new Error(`Failed: ${eventsResponse.status}`);
 
         const data = await eventsResponse.json();
-        setEvents(data.items ?? data);
+        const rawEvents = data.items ?? data;
+        setEvents(consolidateHistoricalEvents(rawEvents));
       } catch (error) {
         console.error("RailSentinel connection error:", error);
       } finally {
@@ -90,10 +74,7 @@ export default function App() {
         try {
           const data: WebSocketMessage = JSON.parse(message.data);
           if (data.type === "security_event" && data.event) {
-            setEvents(current => {
-              if (current.some(e => e.id === data.event?.id)) return current;
-              return [data.event!, ...current];
-            });
+            setEvents(current => updateEventsWithIncoming(current, data.event!));
           }
         } catch (err) { }
       };
@@ -111,7 +92,11 @@ export default function App() {
   const patrolEvents = events.filter(e => e.lat && e.lon).slice(0, 10);
   const latestPatrol = patrolEvents.length > 0 ? patrolEvents[0] : null;
 
-  const selectedEvent = events.find(e => e.id === selectedEventId) || null;
+  const selectedEvent = events.find(e =>
+    e.id === selectedEventId ||
+    e.latest_event_id === selectedEventId ||
+    (e.payload?.incident_id && e.payload.incident_id === selectedEventId)
+  ) || null;
 
   if (loading) {
     return <div className="app-container loading-screen">ESTABLISHING SECURE CONNECTION...</div>;

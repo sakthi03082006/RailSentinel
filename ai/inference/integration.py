@@ -14,10 +14,15 @@ def map_analysis_to_event_payload(
     device_id: UUID = DEMO_DEVICE_ID,
     lat: float | None = 28.6142,
     lon: float | None = 77.2090,
+    track_id: str | None = None,
+    incident_id: str | None = None,
+    event_id: str | None = None,
+    is_escalation: bool = False,
 ) -> dict:
     """
     Converts a ThreatAnalysis into a valid RailSentinel Security Event API payload.
-    Preserves exactly the threat_score and evidence structure.
+    Preserves exactly the threat_score and evidence structure, while binding
+    the explicit incident_id and track_id for deterministic incident lifecycle tracking.
     """
     evidence = analysis.evidence
     
@@ -31,8 +36,30 @@ def map_analysis_to_event_payload(
     else:
         event_type = "detection"
         
+    evidence_dict: Dict[str, Any] = {
+        "object_type": evidence.object_type,
+        "dwell_seconds": evidence.dwell_seconds,
+        "person_left_object": evidence.person_left_object,
+        "detection_source": evidence.detection_source,
+    }
+    if track_id is not None:
+        evidence_dict["track_id"] = track_id
+
+    inner_payload: Dict[str, Any] = {
+        "evidence": evidence_dict,
+        "object_type": evidence.object_type,
+        "scientific_boundary_notice": "RGB/thermal CV threat screening. No chemical identification.",
+        "explanation": analysis.explanation,
+    }
+    if incident_id is not None:
+        inner_payload["incident_id"] = incident_id
+    if track_id is not None:
+        inner_payload["track_id"] = track_id
+    if is_escalation:
+        inner_payload["is_escalation"] = True
+
     payload = {
-        "id": str(uuid4()),
+        "id": event_id or str(uuid4()),
         "device_id": str(device_id),
         "station_id": str(DEMO_STATION_ID),
         "zone_id": str(DEMO_ZONE_ID),
@@ -40,16 +67,7 @@ def map_analysis_to_event_payload(
         "threat_score": analysis.threat_score,  # Preserved exact risk score
         "confidence": evidence.confidence,
         "occurred_at": datetime.now(UTC).isoformat(),
-        "payload": {
-            "evidence": {
-                "object_type": evidence.object_type,
-                "dwell_seconds": evidence.dwell_seconds,
-                "person_left_object": evidence.person_left_object,
-                "detection_source": evidence.detection_source
-            },
-            "scientific_boundary_notice": "RGB/thermal CV threat screening. No chemical identification.",
-            "explanation": analysis.explanation
-        }
+        "payload": inner_payload,
     }
     if lat is not None:
         payload["lat"] = lat

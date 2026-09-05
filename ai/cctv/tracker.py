@@ -57,6 +57,7 @@ class SecurityObjectTracker:
 
         self.next_track_id: int = 1
         self.tracks: Dict[int, TrackedItem] = {}
+        self.recently_retired_ids: List[int] = []
 
     def _euclidean_distance(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> float:
         return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
@@ -167,6 +168,7 @@ class SecurityObjectTracker:
                 if track.missing_count > self.max_missing_frames:
                     retired_ids.append(t_id)
 
+        self.recently_retired_ids = retired_ids
         for t_id in retired_ids:
             del self.tracks[t_id]
 

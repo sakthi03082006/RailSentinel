@@ -1,6 +1,6 @@
 import time
 from typing import Dict, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 import httpx
 
 from ai.inference.models import ThreatAnalysis, Severity
@@ -14,6 +14,8 @@ class AlertManager:
     """
     Manages stateful alert dispatching, authentication token renewal,
     and debouncing/cooldown to prevent event flooding into the backend.
+    Enforces one physical tracked object = one active incident with in-place
+    escalations from YELLOW to RED.
     """
 
     def __init__(
@@ -35,7 +37,7 @@ class AlertManager:
         self.access_token: Optional[str] = None
         self.token_expiry_time: float = 0.0
 
-        # State tracking: track_id -> dict(last_sent_time, last_severity, last_score)
+        # State tracking: track_id -> dict(incident_id, first_event_id, last_event_id, last_sent_time, last_severity, last_score, escalated)
         self.dispatched_states: Dict[str, dict] = {}
 
     def _ensure_authenticated(self) -> bool:
@@ -67,6 +69,7 @@ class AlertManager:
         - Severity threshold (YELLOW or RED by default)
         - Debounce cooldown per tracked object
         - Immediate escalation if severity changes (e.g. YELLOW -> RED)
+        - Strict suppression of repeated detections for the same active incident
         """
         # Skip low-risk green events from flooding incident queue
         if self.min_report_severity == Severity.YELLOW and analysis.severity == Severity.GREEN:
@@ -82,19 +85,19 @@ class AlertManager:
         last_sent = state["last_sent_time"]
         last_severity = state["last_severity"]
 
-        # Escalate immediately if severity upgraded (e.g. YELLOW to RED)
+        # Escalate if severity upgraded from YELLOW to RED
         if last_severity == Severity.YELLOW and analysis.severity == Severity.RED:
-            return True
+            # Minimal debounce to avoid rapid fluttering
+            if (now - last_sent) >= min(self.cooldown_seconds, 1.0):
+                return True
 
-        # Otherwise respect cooldown
-        if (now - last_sent) >= self.cooldown_seconds:
-            return True
-
+        # Repeated frames for the same track without escalation must NOT create duplicate events
         return False
 
     def dispatch(self, track_key: str, analysis: ThreatAnalysis) -> Optional[dict]:
         """
         Dispatches a security event payload to POST /api/v1/events.
+        Binds explicit incident_id and track_id so the dashboard updates the existing incident.
         """
         if not self.should_dispatch(track_key, analysis):
             return None
@@ -103,11 +106,22 @@ class AlertManager:
             print("[AlertManager] Cannot dispatch: Backend authentication failed.")
             return None
 
+        state = self.dispatched_states.get(track_key)
+        if state is None:
+            incident_id = f"inc-{uuid4()}"
+            is_escalation = False
+        else:
+            incident_id = state["incident_id"]
+            is_escalation = True
+
         payload = map_analysis_to_event_payload(
             analysis=analysis,
             device_id=self.device_id,
             lat=28.6142,
             lon=77.2090,
+            track_id=track_key,
+            incident_id=incident_id,
+            is_escalation=is_escalation,
         )
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
@@ -126,15 +140,21 @@ class AlertManager:
 
                 if res.status_code in (200, 201):
                     event_data = res.json()
+                    now = time.time()
                     self.dispatched_states[track_key] = {
-                        "last_sent_time": time.time(),
+                        "incident_id": incident_id,
+                        "first_event_id": state["first_event_id"] if state else event_data.get("id"),
+                        "last_event_id": event_data.get("id"),
+                        "last_sent_time": now,
                         "last_severity": analysis.severity,
                         "last_score": analysis.threat_score,
+                        "escalated": is_escalation or (state.get("escalated", False) if state else False),
                     }
+                    action_tag = "ESCALATED TO RED" if is_escalation else "NEW INCIDENT"
                     print(
-                        f"[AlertManager] DISPATCHED ALERT: {analysis.evidence.object_type.upper()} "
+                        f"[AlertManager] DISPATCHED ALERT [{action_tag}]: {analysis.evidence.object_type.upper()} "
                         f"| Score: {analysis.threat_score:.1f} ({analysis.severity.value}) "
-                        f"| Event ID: {event_data.get('id', 'ok')}"
+                        f"| Incident: {incident_id} | Event ID: {event_data.get('id', 'ok')}"
                     )
                     return event_data
                 else:
@@ -143,3 +163,10 @@ class AlertManager:
         except Exception as e:
             print(f"[AlertManager] Network error dispatching event: {e}")
             return None
+
+    def retire_track(self, track_key: str) -> None:
+        """
+        Cleans up track state when the physical object leaves the camera view.
+        Allows future detections of a new object to create a fresh incident.
+        """
+        self.dispatched_states.pop(track_key, None)

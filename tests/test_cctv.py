@@ -317,3 +317,230 @@ def test_handbag_and_suitcase_threat_scoring():
     analysis_suitcase = calculate_threat(suitcase_evidence)
     assert analysis_suitcase.threat_score == 50.0
     assert analysis_suitcase.severity == Severity.YELLOW
+
+
+def test_repeated_frames_same_track_single_incident():
+    """
+    REGRESSION TEST:
+    50 repeated frames for the same physical unattended track must generate
+    exactly ONE initial incident dispatch and NOT spam duplicate events.
+    """
+    alert_mgr = AlertManager(cooldown_seconds=5.0)
+
+    evidence = DetectionEvidence(
+        object_type="backpack",
+        confidence=0.88,
+        dwell_seconds=10.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis_yellow = calculate_threat(evidence)
+    assert analysis_yellow.severity == Severity.YELLOW
+
+    # Frame 1: Initial alert allowed
+    assert alert_mgr.should_dispatch("track_1", analysis_yellow) is True
+    # Simulate dispatch record
+    now = time.time()
+    alert_mgr.dispatched_states["track_1"] = {
+        "incident_id": "inc-test-101",
+        "first_event_id": "evt-test-01",
+        "last_event_id": "evt-test-01",
+        "last_sent_time": now,
+        "last_severity": analysis_yellow.severity,
+        "last_score": analysis_yellow.threat_score,
+        "escalated": False,
+    }
+
+    # Frames 2-50: Repeated frames of the same track must be suppressed
+    for frame_idx in range(2, 51):
+        assert alert_mgr.should_dispatch("track_1", analysis_yellow) is False
+
+
+def test_repeated_yellow_detections_no_duplicate_events():
+    """
+    REGRESSION TEST:
+    Even as time elapses past the cooldown window, repeated YELLOW detections
+    for the same active incident must NOT dispatch duplicate events.
+    """
+    alert_mgr = AlertManager(cooldown_seconds=2.0)
+
+    evidence = DetectionEvidence(
+        object_type="handbag",
+        confidence=0.85,
+        dwell_seconds=15.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis = calculate_threat(evidence)
+    assert analysis.severity == Severity.YELLOW
+
+    # First detection
+    assert alert_mgr.should_dispatch("track_handbag_1", analysis) is True
+    # Set dispatched state 10 seconds in the past (past cooldown)
+    alert_mgr.dispatched_states["track_handbag_1"] = {
+        "incident_id": "inc-handbag-01",
+        "first_event_id": "evt-handbag-01",
+        "last_event_id": "evt-handbag-01",
+        "last_sent_time": time.time() - 10.0,
+        "last_severity": Severity.YELLOW,
+        "last_score": 50.0,
+        "escalated": False,
+    }
+
+    # Even though >2.0s passed, still YELLOW -> must NOT create duplicate event
+    assert alert_mgr.should_dispatch("track_handbag_1", analysis) is False
+
+
+def test_yellow_to_red_escalation_single_update():
+    """
+    REGRESSION TEST:
+    When a track progresses from YELLOW to RED, exactly one escalation
+    dispatch is triggered. Subsequent RED frames are suppressed.
+    """
+    alert_mgr = AlertManager(cooldown_seconds=1.0)
+
+    # Initial YELLOW evidence
+    yellow_ev = DetectionEvidence(
+        object_type="backpack",
+        confidence=0.88,
+        dwell_seconds=10.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis_yellow = calculate_threat(yellow_ev)
+    assert analysis_yellow.severity == Severity.YELLOW
+
+    # 1. Initial YELLOW dispatch allowed
+    assert alert_mgr.should_dispatch("track_1", analysis_yellow) is True
+    now = time.time()
+    alert_mgr.dispatched_states["track_1"] = {
+        "incident_id": "inc-track-1",
+        "first_event_id": "evt-yellow-01",
+        "last_event_id": "evt-yellow-01",
+        "last_sent_time": now - 2.0,  # 2 seconds ago
+        "last_severity": Severity.YELLOW,
+        "last_score": 50.0,
+        "escalated": False,
+    }
+
+    # 2. Threat increases to RED
+    red_ev = DetectionEvidence(
+        object_type="backpack",
+        confidence=0.88,
+        dwell_seconds=65.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis_red = calculate_threat(red_ev)
+    assert analysis_red.severity == Severity.RED
+
+    # Escalation allowed
+    assert alert_mgr.should_dispatch("track_1", analysis_red) is True
+
+    # Record escalation dispatch
+    alert_mgr.dispatched_states["track_1"].update({
+        "last_event_id": "evt-red-02",
+        "last_sent_time": time.time(),
+        "last_severity": Severity.RED,
+        "last_score": 70.0,
+        "escalated": True,
+    })
+
+    # 3. Subsequent RED frames must be suppressed
+    for _ in range(10):
+        assert alert_mgr.should_dispatch("track_1", analysis_red) is False
+
+
+def test_different_tracks_separate_incidents():
+    """
+    REGRESSION TEST:
+    Two distinct physical objects (Track 1 and Track 2) must each
+    be allowed to dispatch their own separate incident.
+    """
+    alert_mgr = AlertManager(cooldown_seconds=5.0)
+
+    ev_1 = DetectionEvidence(
+        object_type="backpack",
+        confidence=0.90,
+        dwell_seconds=10.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis_1 = calculate_threat(ev_1)
+
+    ev_2 = DetectionEvidence(
+        object_type="suitcase",
+        confidence=0.85,
+        dwell_seconds=12.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis_2 = calculate_threat(ev_2)
+
+    # Track 1 allowed
+    assert alert_mgr.should_dispatch("track_1", analysis_1) is True
+    alert_mgr.dispatched_states["track_1"] = {
+        "incident_id": "inc-001",
+        "first_event_id": "evt-001",
+        "last_event_id": "evt-001",
+        "last_sent_time": time.time(),
+        "last_severity": Severity.YELLOW,
+        "last_score": 50.0,
+        "escalated": False,
+    }
+
+    # Track 2 allowed (separate incident)
+    assert alert_mgr.should_dispatch("track_2", analysis_2) is True
+    alert_mgr.dispatched_states["track_2"] = {
+        "incident_id": "inc-002",
+        "first_event_id": "evt-002",
+        "last_event_id": "evt-002",
+        "last_sent_time": time.time(),
+        "last_severity": Severity.YELLOW,
+        "last_score": 50.0,
+        "escalated": False,
+    }
+
+    # Neither track allows repeated dispatch of same severity
+    assert alert_mgr.should_dispatch("track_1", analysis_1) is False
+    assert alert_mgr.should_dispatch("track_2", analysis_2) is False
+
+
+def test_track_retirement_and_recreation():
+    """
+    REGRESSION TEST:
+    When an object leaves the camera view and the tracker retires the track,
+    AlertManager cleans up the state so a subsequent detection can trigger an alert.
+    """
+    alert_mgr = AlertManager(cooldown_seconds=5.0)
+
+    ev = DetectionEvidence(
+        object_type="backpack",
+        confidence=0.90,
+        dwell_seconds=10.0,
+        person_left_object=True,
+        detection_source="CCTV-GATE-1",
+    )
+    analysis = calculate_threat(ev)
+
+    # Initial alert
+    assert alert_mgr.should_dispatch("track_1", analysis) is True
+    alert_mgr.dispatched_states["track_1"] = {
+        "incident_id": "inc-001",
+        "first_event_id": "evt-001",
+        "last_event_id": "evt-001",
+        "last_sent_time": time.time(),
+        "last_severity": Severity.YELLOW,
+        "last_score": 50.0,
+        "escalated": False,
+    }
+
+    # While active, repeated alert is blocked
+    assert alert_mgr.should_dispatch("track_1", analysis) is False
+
+    # Object leaves camera view -> tracker retires track
+    alert_mgr.retire_track("track_1")
+    assert "track_1" not in alert_mgr.dispatched_states
+
+    # Later, new object appears with track_1 -> fresh incident allowed
+    assert alert_mgr.should_dispatch("track_1", analysis) is True

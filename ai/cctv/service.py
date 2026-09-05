@@ -160,6 +160,10 @@ def run_cctv_service(
             # 2. Tracking & Dwell Analysis
             active_tracks, evidences = tracker.update(detections)
 
+            # Clean up retired tracks from AlertManager
+            for ret_id in tracker.recently_retired_ids:
+                alert_manager.retire_track(f"track_{ret_id}")
+
             # Build a lookup of scores per track
             track_scores = {}
 
